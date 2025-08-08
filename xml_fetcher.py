@@ -638,15 +638,15 @@ class AltimusParser(BaseParser):
                 cilindrada_final = v.get("cilindrada") or inferir_cilindrada(modelo_veiculo, versao_veiculo)
             
             parsed = self.normalize_vehicle({
-                "id": v.get("id"), 
-                "tipo": "moto" if is_moto else ("carro" if v.get("tipo") == "Carro/Camioneta" else v.get("tipo")), 
+                "id": v.get("codigo"), 
+                "tipo": "moto" if is_moto else ("carro" if v.get("categoria") == "Carros" else v.get("categoria")), 
                 "titulo": None, "versao": versao_veiculo,
-                "marca": v.get("marca"), "modelo": modelo_veiculo, "ano": v.get("anoModelo") or v.get("ano"),
-                "ano_fabricacao": v.get("anoFabricacao") or v.get("ano_fabricacao"), "km": v.get("km"),
+                "marca": v.get("marca"), "modelo": modelo_veiculo, "ano": v.get("ano_modelo") or v.get("ano"),
+                "ano_fabricacao": v.get("ano_fabricacao") or v.get("ano_fabricacao"), "km": v.get("km"),
                 "cor": v.get("cor"), "combustivel": v.get("combustivel"), 
                 "cambio": "manual" if "manual" in str(v.get("cambio", "")).lower() else ("automatico" if "automático" in str(v.get("cambio", "")).lower() else v.get("cambio")),
                 "motor": re.search(r'\b(\d+\.\d+)\b', str(versao_veiculo or "")).group(1) if re.search(r'\b(\d+\.\d+)\b', str(versao_veiculo or "")) else None, 
-                "portas": v.get("portas"), "categoria": categoria_final or v.get("categoria"),
+                "portas": v.get("portas"), "categoria": v.get("carroceria"),
                 "cilindrada": cilindrada_final,
                 "preco": converter_preco(v.get("valorVenda") or v.get("preco")),
                 "opcionais": opcionais_veiculo, "fotos": v.get("fotos", [])
