@@ -649,7 +649,7 @@ class AltimusParser(BaseParser):
                 "portas": v.get("portas"), "categoria": v.get("carroceria"),
                 "cilindrada": cilindrada_final,
                 "preco": converter_preco(v.get("preco", {}).get("venda")),
-                "opcionais": opcionais_veiculo, "fotos": v.get("fotos", [])
+                "opcionais": v.get("acessorios"), "fotos": v.get("fotos", [])
             })
             parsed_vehicles.append(parsed)
         return parsed_vehicles
