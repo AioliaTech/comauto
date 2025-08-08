@@ -648,7 +648,7 @@ class AltimusParser(BaseParser):
                 "motor": re.search(r'\b(\d+\.\d+)\b', str(versao_veiculo or "")).group(1) if re.search(r'\b(\d+\.\d+)\b', str(versao_veiculo or "")) else None, 
                 "portas": v.get("portas"), "categoria": v.get("carroceria"),
                 "cilindrada": cilindrada_final,
-                "preco": converter_preco(v.get("valorVenda") or v.get("preco")),
+                "preco": converter_preco(v.get("preco", {}).get("venda")),
                 "opcionais": opcionais_veiculo, "fotos": v.get("fotos", [])
             })
             parsed_vehicles.append(parsed)
