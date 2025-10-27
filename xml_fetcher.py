@@ -663,6 +663,175 @@ class AltimusParser(BaseParser):
         if isinstance(opcionais, list): return ", ".join(str(item) for item in opcionais if item)
         return str(opcionais) if opcionais else ""
 
+class MotorLeadsParser(BaseParser):
+    """Parser para estrutura MotorLeads (XML_URL_2 e XML_URL_3)"""
+    
+    def can_parse(self, data: Any, url: str) -> bool:
+        """Identifica estrutura MotorLeads"""
+        if not isinstance(data, dict):
+            return False
+        
+        # Verifica estrutura MotorLeads: tem "items" com "results"
+        if "items" in data:
+            items = data["items"]
+            if isinstance(items, dict) and "results" in items:
+                return True
+        
+        return False
+    
+    def parse(self, data: Any, url: str) -> List[Dict]:
+        """Processa dados do MotorLeads"""
+        items = data.get("items", {})
+        results = items.get("results", [])
+        
+        if isinstance(results, dict):
+            results = [results]
+        
+        parsed_vehicles = []
+        
+        for v in results:
+            if not isinstance(v, dict):
+                continue
+            
+            # Extrai modelo base (primeira palavra do brand_model)
+            brand_model = v.get("brand_model", "")
+            modelo_final = brand_model.split()[0] if brand_model else ""
+            
+            # Versão completa
+            versao_veiculo = v.get("brand_model_version", "")
+            
+            # Processa opcionais
+            opcionais_processados = self._parse_attr_list(v.get("attr_list", ""))
+            
+            # Determina se é moto ou carro
+            category = v.get("category", "").upper()
+            segment = v.get("segment", "").upper()
+            is_moto = category == "MOTO" or category == "MOTOCICLETA"
+            
+            if is_moto:
+                cilindrada_final, categoria_final = inferir_cilindrada_e_categoria_moto(modelo_final, versao_veiculo)
+                tipo_final = "moto"
+            else:
+                # Tenta mapear segment primeiro, depois fallback para definir_categoria_veiculo
+                categoria_final = self._map_segment_to_category(segment)
+                if not categoria_final:
+                    categoria_final = definir_categoria_veiculo(modelo_final, opcionais_processados)
+                cilindrada_final = inferir_cilindrada(modelo_final, versao_veiculo)
+                tipo_final = "carro"
+            
+            # Extrai motor da versão
+            motor_info = self._extract_motor_info(versao_veiculo)
+            
+            # Processa câmbio
+            transmission = v.get("transmission", "").lower()
+            cambio_final = None
+            if "automático" in transmission or "automatico" in transmission:
+                cambio_final = "automatico"
+            elif "manual" in transmission:
+                cambio_final = "manual"
+            else:
+                cambio_final = transmission if transmission else None
+            
+            # Processa fotos da galeria
+            fotos_list = self._extract_photos_motorleads(v.get("gallery", []))
+            
+            # Ano (year_model tem prioridade sobre year_build)
+            ano_final = v.get("year_model") or v.get("year_build")
+            
+            parsed = self.normalize_vehicle({
+                "id": v.get("id"),
+                "tipo": tipo_final,
+                "titulo": v.get("title"),
+                "versao": self._clean_version(versao_veiculo),
+                "marca": v.get("brand"),
+                "modelo": modelo_final,
+                "ano": ano_final,
+                "ano_fabricacao": v.get("year_build"),
+                "km": v.get("odometer"),
+                "cor": v.get("color"),
+                "combustivel": v.get("fuel"),
+                "cambio": cambio_final,
+                "motor": motor_info,
+                "portas": v.get("door"),
+                "categoria": categoria_final or segment,
+                "cilindrada": cilindrada_final,
+                "preco": converter_preco(v.get("price")),
+                "opcionais": opcionais_processados,
+                "fotos": fotos_list
+            })
+            
+            parsed_vehicles.append(parsed)
+        
+        return parsed_vehicles
+    
+    def _parse_attr_list(self, attr_list: str) -> str:
+        """Converte attr_list separado por vírgula em string legível"""
+        if not attr_list:
+            return ""
+        
+        # Divide por vírgula, remove espaços extras e capitaliza
+        attrs = [attr.strip().capitalize() for attr in str(attr_list).split(",") if attr.strip()]
+        return ", ".join(attrs)
+    
+    def _map_segment_to_category(self, segment: str) -> Optional[str]:
+        """Mapeia segment do MotorLeads para categoria padrão"""
+        if not segment:
+            return None
+        
+        segment_map = {
+            "SEDAN": "Sedan",
+            "HATCH": "Hatch",
+            "SUV": "SUV",
+            "PICAPE": "Caminhonete",
+            "PICK-UP": "Caminhonete",
+            "VAN": "Furgão",
+            "UTILITARIO": "Utilitário",
+            "CONVERSIVEL": "Conversível",
+            "COUPE": "Coupe"
+        }
+        
+        return segment_map.get(segment.upper())
+    
+    def _extract_photos_motorleads(self, gallery: List[Dict]) -> List[str]:
+        """Extrai fotos da galeria MotorLeads"""
+        if not gallery or not isinstance(gallery, list):
+            return []
+        
+        fotos = []
+        for item in gallery:
+            if isinstance(item, dict):
+                # Tenta múltiplos campos possíveis
+                file_url = item.get("fileURL") or item.get("file") or item.get("url")
+                if file_url:
+                    fotos.append(str(file_url).strip())
+        
+        return fotos
+    
+    def _clean_version(self, versao: str) -> str:
+        """Limpa a versão removendo informações técnicas redundantes"""
+        if not versao:
+            return ""
+        
+        # Remove padrões técnicos comuns (motor, válvulas, etc)
+        versao_limpa = re.sub(
+            r'\b(\d+\.\d+|16V|8V|TB|Turbo|Flex|Aut\.|Aut|Manual|Mec\.|4x4|4x2|4p|2p|Dies\.|Diesel)\b',
+            '',
+            versao,
+            flags=re.IGNORECASE
+        )
+        # Remove espaços extras
+        versao_limpa = re.sub(r'\s+', ' ', versao_limpa).strip()
+        
+        return versao_limpa
+    
+    def _extract_motor_info(self, versao: str) -> Optional[str]:
+        """Extrai informações do motor da versão (ex: 1.4, 2.0)"""
+        if not versao:
+            return None
+        
+        motor_match = re.search(r'\b(\d+\.\d+)\b', versao)
+        return motor_match.group(1) if motor_match else None
+        
 class AutocertoParser(BaseParser):
     def can_parse(self, data: Any, url: str) -> bool: return isinstance(data, dict) and "estoque" in data and "veiculo" in data.get("estoque", {})
     
@@ -1132,7 +1301,13 @@ class UnifiedVehicleFetcher:
         self.parsers = [AltimusParser(), ClickGarageParser(), AutocertoParser(), RevendamaisParser(), AutoconfParser(), BoomParser()]
         print("[INFO] Sistema unificado iniciado - detecção automática ativada com suporte a motos")
     
-    def get_urls(self) -> List[str]: return list({val for var, val in os.environ.items() if var.startswith("XML_URL") and val})
+    def get_urls(self) -> List[Tuple[str, str]]:
+        """Retorna lista de tuplas (url, nome_variavel)"""
+        urls = []
+        for var, val in os.environ.items():
+            if var.startswith("XML_URL") and val:
+                urls.append((val, var))
+        return urls
     
     def detect_format(self, content: bytes, url: str) -> tuple[Any, str]:
         content_str = content.decode('utf-8', errors='ignore')
@@ -1141,21 +1316,39 @@ class UnifiedVehicleFetcher:
             try: return xmltodict.parse(content_str), "xml"
             except Exception: raise ValueError(f"Formato não reconhecido para URL: {url}")
     
-    def process_url(self, url: str) -> List[Dict]:
-        print(f"[INFO] Processando URL: {url}")
+    def process_url(self, url: str, var_name: str) -> List[Dict]:
+        print(f"[INFO] Processando URL ({var_name}): {url}")
+        
+        # Determina localização baseada no nome da variável
+        location = URL_LOCATION_MAP.get(var_name)
+        
         try:
             response = requests.get(url, timeout=30)
             response.raise_for_status()
             data, format_type = self.detect_format(response.content, url)
             print(f"[INFO] Formato detectado: {format_type}")
+            
             for parser in self.parsers:
                 if parser.can_parse(data, url):
                     print(f"[INFO] Usando parser: {parser.__class__.__name__}")
-                    return parser.parse(data, url)
+                    vehicles = parser.parse(data, url)
+                    
+                    # Adiciona localização a todos os veículos
+                    if location:
+                        for vehicle in vehicles:
+                            vehicle["localizacao"] = location
+                        print(f"[INFO] Localização '{location}' adicionada a {len(vehicles)} veículo(s)")
+                    
+                    return vehicles
+            
             print(f"[AVISO] Nenhum parser adequado encontrado para URL: {url}")
             return []
-        except requests.RequestException as e: print(f"[ERRO] Erro de requisição para URL {url}: {e}"); return []
-        except Exception as e: print(f"[ERRO] Erro crítico ao processar URL {url}: {e}"); return []
+        except requests.RequestException as e: 
+            print(f"[ERRO] Erro de requisição para URL {url}: {e}")
+            return []
+        except Exception as e: 
+            print(f"[ERRO] Erro crítico ao processar URL {url}: {e}")
+            return []
     
     def fetch_all(self) -> Dict:
         urls = self.get_urls()
@@ -1164,7 +1357,10 @@ class UnifiedVehicleFetcher:
             return {}
         
         print(f"[INFO] {len(urls)} URL(s) encontrada(s) para processar")
-        all_vehicles = [vehicle for url in urls for vehicle in self.process_url(url)]
+        all_vehicles = []
+        for url, var_name in urls:
+            vehicles = self.process_url(url, var_name)
+            all_vehicles.extend(vehicles)
         
         # Estatísticas por tipo e categoria
         stats = self._generate_stats(all_vehicles)
