@@ -1005,7 +1005,8 @@ def get_data(request: Request):
         "cor": query_params.get("cor"),
         "combustivel": query_params.get("combustivel"),
         "motor": query_params.get("motor"),
-        "portas": query_params.get("portas")
+        "portas": query_params.get("portas"),
+        "localizacao": query_params.get("localizacao")
     }
     
     # Remove filtros vazios
