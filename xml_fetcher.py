@@ -12,6 +12,11 @@ from abc import ABC, abstractmethod
 
 JSON_FILE = "data.json"
 
+URL_LOCATION_MAP = {
+    "XML_URL_1": "Montenegro",
+    "XML_URL_2": "Santa Luzia",
+    "XML_URL_3": "Motomecânica"
+}
 # =================== MAPEAMENTOS DE VEÍCULOS =======================
 
 MAPEAMENTO_CATEGORIAS = {}
