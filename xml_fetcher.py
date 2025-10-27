@@ -1298,7 +1298,7 @@ class BoomParser(BaseParser):
 
 class UnifiedVehicleFetcher:
     def __init__(self):
-        self.parsers = [AltimusParser(), ClickGarageParser(), AutocertoParser(), RevendamaisParser(), AutoconfParser(), BoomParser()]
+        self.parsers = [MotorLeadsParser(), AltimusParser(), ClickGarageParser(), AutocertoParser(), RevendamaisParser(), AutoconfParser(), BoomParser()]
         print("[INFO] Sistema unificado iniciado - detecção automática ativada com suporte a motos")
     
     def get_urls(self) -> List[Tuple[str, str]]:
