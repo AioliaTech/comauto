@@ -590,7 +590,17 @@ class VehicleSearchEngine:
                         self.model_match(all_words, str(v.get("titulo", "")), v.get("tipo", ""))[0] or
                         self.model_match(all_words, str(v.get("versao", "")), v.get("tipo", ""))[0])
                 ]
+            elif filter_key == "localizacao":
+                # Filtro exato para localização
+                multi_values = self.split_multi_value(filter_value)
+                all_words = []
+                for val in multi_values:
+                    all_words.extend(val.split())
                 
+                filtered_vehicles = [
+                    v for v in filtered_vehicles
+                    if self.fuzzy_match(all_words, str(v.get("localizacao", "")), v.get("tipo", ""))[0]
+                ]
             elif filter_key == "cor":
                 # Outros filtros continuam usando apenas fuzzy
                 multi_values = self.split_multi_value(filter_value)
