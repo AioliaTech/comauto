@@ -643,7 +643,7 @@ class AltimusParser(BaseParser):
                 cilindrada_final = v.get("cilindrada") or inferir_cilindrada(modelo_veiculo, versao_veiculo)
             
             parsed = self.normalize_vehicle({
-                "id": ''.join(d for i, d in enumerate(str(v.get("codigo", ""))) if i in [1, 2, 3, 5, 6])
+                "id": ''.join(d for i, d in enumerate(str(v.get("codigo", ""))) if i in [1, 2, 3, 5, 6]),
                 "tipo": "moto" if is_moto else ("carro" if v.get("categoria") == "Carros" else v.get("categoria")), 
                 "titulo": None, "versao": versao_veiculo,
                 "marca": v.get("marca"), "modelo": modelo_veiculo, "ano": v.get("ano_modelo") or v.get("ano"),
