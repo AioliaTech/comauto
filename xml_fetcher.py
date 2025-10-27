@@ -643,7 +643,7 @@ class AltimusParser(BaseParser):
                 cilindrada_final = v.get("cilindrada") or inferir_cilindrada(modelo_veiculo, versao_veiculo)
             
             parsed = self.normalize_vehicle({
-                "id": ''.join(d for i, d in enumerate(str(v.get("codigo", ""))) if i in [1, 2, 3, 5, 6]),
+                "id": ''.join(d for i, d in enumerate(str(v.get("placa", ""))) if i in [1, 2, 3, 5, 6]),
                 "tipo": "moto" if is_moto else ("carro" if v.get("categoria") == "Carros" else v.get("categoria")), 
                 "titulo": None, "versao": versao_veiculo,
                 "marca": v.get("marca"), "modelo": modelo_veiculo, "ano": v.get("ano_modelo") or v.get("ano"),
@@ -739,7 +739,7 @@ class MotorLeadsParser(BaseParser):
             ano_final = v.get("year_model") or v.get("year_build")
             
             parsed = self.normalize_vehicle({
-                "id": ''.join(d for i, d in enumerate(str(v.get("codigo", ""))) if i in [1, 2, 3, 5, 6]),
+                "id": ''.join(d for i, d in enumerate(str(v.get("reference", ""))) if i in [1, 2, 3, 5, 6]),
                 "tipo": tipo_final,
                 "titulo": v.get("title"),
                 "versao": self._clean_version(versao_veiculo),
