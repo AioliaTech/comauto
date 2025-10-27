@@ -739,7 +739,7 @@ class MotorLeadsParser(BaseParser):
             ano_final = v.get("year_model") or v.get("year_build")
             
             parsed = self.normalize_vehicle({
-                "id": ''.join(d for i, d in enumerate(str(v.get("codigo", ""))) if i in [1, 2, 3, 5, 6])
+                "id": ''.join(d for i, d in enumerate(str(v.get("codigo", ""))) if i in [1, 2, 3, 5, 6]),
                 "tipo": tipo_final,
                 "titulo": v.get("title"),
                 "versao": self._clean_version(versao_veiculo),
